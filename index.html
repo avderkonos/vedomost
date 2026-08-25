@@ -1,13 +1,75 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ведомость</title>
+    <title>Ведомость — расчёт зарплаты филиала</title>
   </head>
-  <body>
-    <div id="app"></div>
+  <body class="locked">
+
+<div class="gate" id="gate">
+  <form class="gatebox" id="gateForm">
+    <h1>Ведомость</h1>
+    <p class="sub">Расчёт зарплаты филиала</p>
+    <label for="gateLogin">Логин</label>
+    <input id="gateLogin" autocomplete="username" autocapitalize="off" spellcheck="false">
+    <p class="sub2">Логин выдаёт администратор. Это может быть и адрес почты.</p>
+    <label for="gatePass">Пароль</label>
+    <div class="pwrap">
+      <input id="gatePass" type="password" autocomplete="current-password">
+      <button type="button" class="eye" data-eye="gatePass">показать</button>
+    </div>
+    <button class="btn" type="submit" id="gateBtn">Войти</button>
+    <p class="gatemsg" id="gateMsg"></p>
+  </form>
+</div>
+
+<div class="shell">
+  <nav class="rail">
+    <div class="brand"><h1>Ведомость</h1><p id="brandBranch">Беломорская</p></div>
+    <button data-tab="masters" class="on">Мастера <span class="tag" id="tagM"></span></button>
+    <button data-tab="staff">Персонал <span class="tag" id="tagS"></span></button>
+    <button data-tab="tabel">Табель <span class="tag" id="tagT"></span></button>
+    <button data-tab="people">Картотека <span class="tag" id="tagP"></span></button>
+    <button data-tab="refs">Справочники</button>
+    <button data-tab="summary">Свод</button>
+    <button data-tab="sync">Синхронизация <span class="tag" id="tagC"></span></button>
+    <button data-tab="motiv">Мотивация <span class="tag" id="tagB"></span></button>
+    <button data-tab="help">Инструкция</button>
+    <button data-tab="access" id="tabAccess" style="display:none">Доступ</button>
+    <div class="railfoot">
+      <button id="btnXls">Выгрузить в Excel</button>
+      <button id="btnSlips">Листки в Excel</button>
+      <button id="btnCsv">Выгрузить CSV</button>
+      <button id="btnSave">Резервная копия</button>
+      <button id="btnLoad">Загрузить копию</button>
+      <button id="btnPrint">Расчётные листки</button>
+      <button id="railOut" style="margin-top:6px;color:#E0457B">Выйти<span class="tag" id="railWho"></span></button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="top">
+      <h2 id="title">Мастера</h2>
+      <div id="status" class="status">Проверяю хранилище…</div>
+      <button class="btn" id="btnCommit" style="display:none">Сохранить изменения</button>
+      <div class="period">
+        <label for="branch">Филиал</label>
+        <select id="branch" style="width:170px"></select>
+        <label for="period">Период</label>
+        <select id="period" style="width:150px"></select>
+      </div>
+    </div>
+    <div class="strip" id="strip"></div>
+    <div class="page" id="page"></div>
+    <div id="slips"></div>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept="application/json" style="display:none">
+<input type="file" id="tabelFile" accept=".csv,text/csv,text/plain" style="display:none">
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
