@@ -320,11 +320,30 @@ async function apiUsers(){
   return data;
 }
 
+/* Заводит НОВУЮ учётку (или меняет пароль/права существующей) через
+   Edge Function create-user — она одна знает служебный ключ, из браузера
+   его не видно. Раньше это мог делать только разработчик вручную. */
+async function вызовФункции(name, body){
+  const {data, error} = await sb.functions.invoke(name, {body});
+  if(error){
+    let msg = error.message || 'Не вышло';
+    try{
+      if(error.context && typeof error.context.json === 'function'){
+        const j = await error.context.json();
+        if(j && j.error) msg = j.error;
+      }
+    }catch(e){}
+    throw new Error(msg);
+  }
+  if(data && data.ok===false) throw new Error(data.error||'Не вышло');
+  return data;
+}
+
 async function apiUserSave(p){
-  const {error}=await sb.rpc('user_set_access',{
-    p_login:p.login, p_role:p.role==='админ'?'admin':'user',
-    p_branches:p.branches||'', p_active:p.active!==false});
-  if(error) throw new Error(error.message);
+  await вызовФункции('create-user', {
+    app:'vedomost', login:p.login, pass:p.pass||undefined,
+    role:p.role==='админ'?'admin':'user', active:p.active!==false, branches:p.branches||''
+  });
   return {ok:true, updated:p.login};
 }
 
