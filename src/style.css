@@ -43,7 +43,7 @@ body.locked .gate{display:flex}
 .tiers-inline input{padding:4px 7px; font-size:12.5px}
 table.tabel th{font-size:9.5px; line-height:1.2; padding:4px 2px}
 table.tabel td{padding:2px}
-table.tabel input.tcell{width:34px; padding:3px 2px; text-align:center; font-size:12px}
+table.tabel input.tcell{width:54px; padding:3px 2px; text-align:center; font-size:12px}
 table.tabel .wknd{background:#FBF7FA}
 table.tabel tbody tr:hover .wknd{background:#F7F0F6}
 .btn.on-mode{background:var(--ink); color:#fff; border-color:var(--ink)}
@@ -159,6 +159,7 @@ tfoot td{font-weight:600; background:#F7F4FA; border-top:2px solid var(--ink); b
 .actions{display:flex; gap:8px; margin-left:auto; flex-wrap:wrap}
 
 .hint{font-size:12.5px; color:var(--muted); margin:0 0 12px}
+.hint.warn{color:var(--warn)}
 .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px}
 .field{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:7px 0; border-bottom:1px dashed var(--line)}
 .field:last-child{border-bottom:0}
