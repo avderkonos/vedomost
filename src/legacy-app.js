@@ -1830,7 +1830,8 @@ function viewTabel(){
   const люди=S.people.filter(p=>занятые.includes(p.id));
   const свободные=S.people.filter(p=>!занятые.includes(p.id));
 
-  const шапка=`<tr><th class="l fix">Сотрудник</th>
+  const режимPill=`<span class="pill ${режимТабеля==='h'?'ok':'warn'}">${режимТабеля==='h'?'вводятся часы':'вводится выручка'}</span>`;
+  const шапка=`<tr><th class="l fix">Сотрудник<br>${режимPill}</th>
     ${Array.from({length:дней},(_,i)=>{const d=i+1;
       return `<th class="${выходной(S.period,d)?'wknd':''}" style="min-width:54px">
         ${d}<br><span style="font-weight:400;text-transform:none">${деньНедели(S.period,d)}</span></th>`;}).join('')}
@@ -1859,11 +1860,11 @@ function viewTabel(){
 
   return `
   <div class="panel">
-    <header><h3>Табель за ${периодТекст(S.period)}</h3>
+    <header><h3>Табель за ${периодТекст(S.period)} ${режимPill}</h3>
       <p>${esc(S.branch)} · ${дней} дней в месяце</p>
       <div class="actions noprint">
-        <button class="btn ghost${режимТабеля==='h'?' on-mode':''}" id="modeH">Часы</button>
-        <button class="btn ghost${режимТабеля==='r'?' on-mode':''}" id="modeR">Выручка за смену</button>
+        <button class="btn${режимТабеля==='h'?' on-mode':' ghost'}" id="modeH">Часы</button>
+        <button class="btn${режимТабеля==='r'?' on-mode':' ghost'}" id="modeR">Выручка за смену</button>
         ${свободные.length?`<select id="addToTabel" style="width:210px">
           <option value="">Добавить сотрудника…</option>
           ${свободные.map(p=>`<option value="${p.id}">${esc(p.fio)}</option>`).join('')}
