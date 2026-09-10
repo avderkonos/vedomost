@@ -151,7 +151,7 @@ function seed(){
   const mf=[[5,46,51267,0,8000],[4,34,41523,0,8500],[4,44,56429,0,8000],
             [4,44,60502,0,8000],[2,18,31820,0,8000],[1,6,8589,0,2500]];
   const masters=mf.map((f,i)=>({empId:people[i].id,shifts:f[0],hours:f[1],revS:f[2],revG:f[3],
-    corr:0,vac:0,extra:0,redo:0,inv:0,carry:0,av:[0,f[4]],avk:[]}));
+    corr:0,vac:0,extra:0,redo:0,inv:0,rko:0,carry:0,av:[0,f[4]],avk:[]}));
   const sf=[[3,4200,0],[3,390,15900],[6,0,6000]];
   const staff=sf.map((f,i)=>({empId:people[6+i].id,shifts:f[0],revG:f[1],bonus:0,bonus100:0,
     night:0,vac:0,ded:0,carry:0,av:[0,f[2]],avk:[]}));
@@ -681,8 +681,10 @@ function calcMaster(row){
     hours:n(row.hours), perSh: n(row.shifts)?down(baseRev/n(row.shifts)):0, base:base+accG});
   const бонус = бонусы.reduce((a,x)=>a+x.сумма,0);
   const accrued = base + accG + бонус + n(row.vac) + n(row.extra) + n(row.carry) - n(row.redo) - n(row.inv);
-  const ndfl = ндфл_(p, accrued);
-  const total = accrued - ndfl - суммаАвансов(row);
+  // НДФЛ ручной, но пока бухгалтер его не тронул — считаем как раньше, автоматически,
+  // чтобы у уже посчитанных месяцев «К выплате» не менялось при обновлении.
+  const ndfl = (row.ndfl===undefined||row.ndfl===null||row.ndfl==='') ? ндфл_(p, accrued) : n(row.ndfl);
+  const total = accrued - ndfl - суммаАвансов(row) - n(row.rko);
   const paid = step(total);
   let flag='ok', note='Норма';
   if(pctS===null||pctS===undefined){flag='bad'; note='% не задан';}
@@ -1105,7 +1107,7 @@ function плашкаПроводки(){
 function перекрытьПоля(){
   if(!закрыто() && !толькоСмотрим()) return;
   document.querySelectorAll('#page input, #page select, #page textarea').forEach(el=>{
-    if(el.id==='newPeriod'||el.id==='cfgUrl'||el.id==='pwdOld'||el.id==='pwdNew') return;
+    if(el.id==='newPeriod'||el.id==='cfgUrl'||el.id==='pwdOld'||el.id==='pwdNew'||el.id==='masterSearch') return;
     if(el.type==='checkbox') return;
     el.disabled=true; el.style.background='#F4F1F6';
   });
@@ -1291,7 +1293,7 @@ function rollover(period, withCarry){
   // уволенных в новый месяц не тянем
   const жив=id=>работает(person(id));
   N.masters=S.masters.filter(r=>жив(r.empId)).map(r=>({empId:r.empId,shifts:0,hours:0,revS:0,revG:0,corr:0,vac:0,
-    extra:0,redo:0,inv:0,carry:withCarry?(restM[r.empId]||0):0,av:пустыеАвансы(),avk:пустаяКасса()}));
+    extra:0,redo:0,inv:0,rko:0,carry:withCarry?(restM[r.empId]||0):0,av:пустыеАвансы(),avk:пустаяКасса()}));
   N.staff=S.staff.filter(r=>жив(r.empId)).map(r=>({empId:r.empId,shifts:0,revG:0,bonus:0,bonus100:0,night:0,vac:0,
     ded:0,carry:withCarry?(restS[r.empId]||0):0,av:пустыеАвансы(),avk:пустаяКасса()}));
   S=N; render(); занятьМесяц();
@@ -1349,6 +1351,8 @@ function strip(t){
 }
 
 /* ---- Мастера ---- */
+let поискМастеров='';
+
 function viewMasters(t){
   const free = S.people.filter(p=>процентная(p.post) && работает(p)
     && !S.masters.some(m=>m.empId===p.id));
@@ -1376,6 +1380,8 @@ function viewMasters(t){
         `<td><input data-f="${f}" class="num" value="${r[f]||''}" placeholder="0"></td>`).join('')}
       <td class="calc num">${rub(c.accrued)}</td>
       ${ячейкиАвансов(r)}
+      <td><input data-f="rko" class="num" value="${r.rko||''}" placeholder="0"></td>
+      <td><input data-f="ndfl" class="num" value="${(r.ndfl===undefined||r.ndfl===null||r.ndfl==='')?(c.ndfl||''):r.ndfl}" placeholder="0" title="Пока не тронуто — считается автоматически"></td>
       <td class="pay num">${rub(c.total)}</td>
       <td class="pay num">${rub(c.paid)}</td>
       <td class="calc num">${rub(c.rest)}</td>
@@ -1398,17 +1404,19 @@ function viewMasters(t){
         <span class="calc">₽ по услугам</span>
       </span>
       <div class="actions noprint">
+        <input type="text" id="masterSearch" placeholder="Поиск по фамилии" value="${esc(поискМастеров)}" style="width:170px">
         <button class="btn" id="addMaster"${free.length&&S.masters.length<MAX_MASTERS?'':' disabled style="opacity:.4;cursor:not-allowed"'}>
           Добавить мастера</button>
       </div>
     </header>
-    ${S.masters.length?`<div class="scroll"><table>
+    ${S.masters.length?`<div class="scroll" style="max-height:calc(100vh - 260px);overflow-y:auto"><table>
       <thead><tr>
         <th class="l fix">Мастер</th><th class="l">Статус</th><th>%</th>
         <th>Смен</th><th>Часов</th><th>Услуги ₽</th><th>Товары ₽</th><th>Коррект. ₽</th>
         <th>По %, ₽</th><th>По часам ₽</th><th class="l">База</th><th>База ₽</th><th>С товаров ₽</th>
         <th>Отпуск ₽</th><th>Доплаты ₽</th><th>Переделки ₽</th><th>Инвент. ₽</th><th>Перенос ₽</th>
         <th>Начислено ₽</th>${заголовкиАвансов().map(h=>`<th>${h}</th>`).join('')}
+        <th>РКО ₽</th><th>НДФЛ ₽</th>
         <th>К выплате ₽</th><th>Выдано ₽</th><th>Остаток ₽</th><th class="l">Контроль</th><th></th>
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -1422,6 +1430,7 @@ function viewMasters(t){
         <td class="num">${rub(sumIn('redo'))}</td><td class="num">${rub(sumIn('inv'))}</td>
         <td class="num">${rub(sumIn('carry'))}</td><td class="num">${rub(sum('accrued'))}</td>
         ${итогиАвансов(S.masters)}
+        <td class="num">${rub(sumIn('rko'))}</td><td class="num">${rub(sum('ndfl'))}</td>
         <td class="num">${rub(sum('total'))}</td><td class="num">${rub(sum('paid'))}</td>
         <td class="num">${rub(sum('rest'))}</td><td></td><td></td>
       </tr></tfoot></table></div>`
@@ -2187,6 +2196,17 @@ $('#period').addEventListener('change',e=>{
 
 $('#page').addEventListener('input',e=>{
   const el=e.target, tr=el.closest('tr');
+  if(el.id==='masterSearch'){
+    поискМастеров=el.value;
+    const q=поискМастеров.trim().toLowerCase();
+    document.querySelectorAll('#page table tbody tr[data-i]').forEach(row=>{
+      const sel=row.querySelector('select[data-f="empId"]');
+      if(!sel) return;
+      const fio=(sel.selectedOptions[0]?.textContent||'').toLowerCase();
+      row.style.display = !q || fio.includes(q) ? '' : 'none';
+    });
+    return;
+  }
   if(el.dataset.p!==undefined){
     // Перерисовка на каждом символе пересоздавала поле и выбрасывала курсор —
     // дописать число было невозможно. Пересчитываем только полосу итогов,
@@ -2276,7 +2296,7 @@ $('#page').addEventListener('click',e=>{
     const free=S.people.find(p=>процентная(p.post)&&работает(p)&&!S.masters.some(m=>m.empId===p.id));
     if(free&&S.masters.length<MAX_MASTERS){
       S.masters.push({empId:free.id,shifts:0,hours:0,revS:0,revG:0,corr:0,vac:0,extra:0,
-        redo:0,inv:0,carry:0,av:пустыеАвансы(),avk:пустаяКасса()});
+        redo:0,inv:0,rko:0,carry:0,av:пустыеАвансы(),avk:пустаяКасса()});
       render();
     }
     return;
@@ -2423,7 +2443,7 @@ function перенестиТабель(что){
     const т=итогТабеля(id), че=person(id); if(!че) return;
     if(процентная(che_post(че))){
       let r=S.masters.find(x=>x.empId===id);
-      if(!r){ r={empId:id,shifts:0,hours:0,revS:0,revG:0,corr:0,vac:0,extra:0,redo:0,inv:0,carry:0,av:пустыеАвансы(),avk:пустаяКасса()};
+      if(!r){ r={empId:id,shifts:0,hours:0,revS:0,revG:0,corr:0,vac:0,extra:0,redo:0,inv:0,rko:0,carry:0,av:пустыеАвансы(),avk:пустаяКасса()};
               S.masters.push(r); }
       if(что!=='выручка'){ r.shifts=т.смен; r.hours=т.часов; }
       if(что!=='часы') r.revS=т.выручка;
