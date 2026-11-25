@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Себестоимость услуги — BeautyOS</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:     var(--tg-theme-bg-color, #ffffff);
+    --bg2:    var(--tg-theme-secondary-bg-color, #f5f5f5);
+    --text:   var(--tg-theme-text-color, #222222);
+    --hint:   var(--tg-theme-hint-color, #888888);
+    --link:   var(--tg-theme-link-color, #5B7FE9);
+    --accent: #7C5CBF;
+    --green:  #27AE60;
+    --orange: #E67E22;
+    --red:    #E74C3C;
+    --radius: 14px;
+  }
+  body {
+    background: var(--bg2);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    padding-bottom: 100px;
+  }
+
+  .header {
+    background: var(--accent);
+    color: #fff;
+    padding: 18px 16px 14px;
+    text-align: center;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header p  { font-size: 12px; opacity: 0.85; margin-top: 3px; }
+
+  .section {
+    background: var(--bg);
+    margin: 12px 12px 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .section-title {
+    padding: 12px 16px 8px;
+    font-size: 12px; font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--bg2);
+  }
+  .field {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--bg2);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .field:last-child { border-bottom: none; }
+  .field label { flex: 1; font-size: 14px; color: var(--text); }
+  .field label small { display: block; font-size: 11px; color: var(--hint); margin-top: 1px; }
+  .field input {
+    width: 110px;
+    background: var(--bg2);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 14px; color: var(--text);
+    text-align: right; outline: none;
+    transition: border-color .2s; flex-shrink: 0;
+  }
+  .field input.wide { width: 100%; text-align: left; }
+  .field input:focus { border-color: var(--accent); }
+
+  /* Суффикс % или ₽ рядом с полем */
+  .field .input-wrap { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .field .input-wrap input { width: 80px; }
+  .field .input-wrap .suffix { font-size: 14px; color: var(--hint); font-weight: 500; }
+
+  /* Расходники */
+  .consumables-header {
+    display: flex; justify-content: space-between;
+    padding: 8px 16px 4px;
+    font-size: 11px; color: var(--hint);
+  }
+  .consumable-row {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--bg2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .consumable-row .c-name {
+    flex: 1; background: var(--bg2);
+    border: 1px solid transparent; border-radius: 8px;
+    padding: 7px 10px; font-size: 13px; color: var(--text);
+    outline: none; min-width: 0;
+  }
+  .consumable-row .c-name:focus { border-color: var(--accent); }
+  .consumable-row .c-price {
+    width: 90px; background: var(--bg2);
+    border: 1px solid transparent; border-radius: 8px;
+    padding: 7px 8px; font-size: 13px; color: var(--text);
+    text-align: right; outline: none; flex-shrink: 0;
+  }
+  .consumable-row .c-price:focus { border-color: var(--accent); }
+  .consumable-row .del-btn {
+    background: none; border: none;
+    color: var(--red); font-size: 20px; cursor: pointer;
+    padding: 2px 4px; flex-shrink: 0; line-height: 1;
+  }
+  .add-consumable {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 16px; color: var(--link);
+    font-size: 13px; cursor: pointer;
+    background: none; border: none; width: 100%; text-align: left;
+  }
+
+  /* Результат */
+  .result-box {
+    background: var(--bg);
+    margin: 12px 12px 0;
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .result-title { font-size: 12px; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .result-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; font-size: 13px;
+  }
+  .result-row .label { color: var(--hint); }
+  .result-row .value { font-weight: 600; }
+  .result-divider { border: none; border-top: 1px solid var(--bg2); margin: 8px 0; }
+
+  /* Маржа — большая карточка */
+  .margin-card {
+    border-radius: 12px; padding: 14px 16px; margin-top: 12px; text-align: center;
+  }
+  .margin-card .mc-pct { font-size: 32px; font-weight: 800; }
+  .margin-card .mc-label { font-size: 11px; opacity: 0.8; text-transform: uppercase;
+    letter-spacing: 0.3px; margin-top: 2px; }
+  .margin-card.green  { background: #e8f8f0; color: var(--green); }
+  .margin-card.orange { background: #fef3e2; color: var(--orange); }
+  .margin-card.red    { background: #fdecea; color: var(--red); }
+
+  /* Вердикт */
+  .verdict {
+    border-radius: 10px; padding: 12px 14px;
+    margin-top: 10px; font-size: 13px; line-height: 1.5;
+  }
+  .verdict.green  { background: #e8f8f0; color: #1d6e41; }
+  .verdict.orange { background: #fef3e2; color: #8a4a00; }
+  .verdict.red    { background: #fdecea; color: #922020; }
+
+  /* Рекомендованная цена */
+  .rec-price-card {
+    background: var(--bg2); border-radius: 10px;
+    padding: 12px 14px; margin-top: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .rec-price-card .rp-label { font-size: 12px; color: var(--hint); }
+  .rec-price-card .rp-value { font-size: 20px; font-weight: 800; color: var(--accent); }
+
+  .bottom-btn {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--bg); border-top: 1px solid var(--bg2);
+  }
+  .btn {
+    width: 100%; padding: 14px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity .2s;
+  }
+  .btn:active { opacity: .85; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💰 Себестоимость услуги</h1>
+  <p>BeautyOS · Финансовые инструменты</p>
+</div>
+
+<!-- Название -->
+<div class="section">
+  <div class="section-title">Услуга</div>
+  <div class="field">
+    <input type="text" id="serviceName" class="wide" placeholder="Маникюр с гель-лаком…">
+  </div>
+</div>
+
+<!-- Расходники -->
+<div class="section" id="consumablesSection">
+  <div class="section-title">Расходники</div>
+  <div class="consumables-header">
+    <span>Наименование</span><span>Стоимость, ₽</span>
+  </div>
+  <div id="consumablesList"></div>
+  <button class="add-consumable" onclick="addConsumable()">＋ Добавить расходник</button>
+</div>
+
+<!-- Вознаграждение мастера -->
+<div class="section">
+  <div class="section-title">Вознаграждение мастера</div>
+  <div class="field">
+    <label>% от стоимости услуги<small>сдельная ставка мастера</small></label>
+    <div class="input-wrap">
+      <input type="number" id="salaryPct" placeholder="0" min="0" max="100" oninput="recalc()">
+      <span class="suffix">%</span>
+    </div>
+  </div>
+</div>
+
+<!-- Цена услуги -->
+<div class="section">
+  <div class="section-title">Цена услуги</div>
+  <div class="field">
+    <label>Текущая / планируемая цена<small>сколько платит клиент</small></label>
+    <div class="input-wrap">
+      <input type="number" id="servicePrice" placeholder="0" min="0" oninput="recalc()">
+      <span class="suffix">₽</span>
+    </div>
+  </div>
+</div>
+
+<!-- Результат -->
+<div class="result-box">
+  <div class="result-title">📊 Расчёт</div>
+
+  <div class="result-row">
+    <span class="label">Расходники</span>
+    <span class="value" id="rMaterials">— ₽</span>
+  </div>
+  <div class="result-row">
+    <span class="label">Вознаграждение мастера</span>
+    <span class="value" id="rLabor">— ₽</span>
+  </div>
+  <hr class="result-divider">
+  <div class="result-row" style="font-weight:600">
+    <span class="label" style="color:var(--text)">Себестоимость</span>
+    <span class="value" id="rCost">— ₽</span>
+  </div>
+  <div class="result-row">
+    <span class="label">Цена услуги</span>
+    <span class="value" id="rPrice">— ₽</span>
+  </div>
+  <div class="result-row">
+    <span class="label">Прибыль с услуги</span>
+    <span class="value" id="rProfit">— ₽</span>
+  </div>
+
+  <div class="margin-card green" id="marginCard">
+    <div class="mc-pct" id="marginPct">—%</div>
+    <div class="mc-label">Маржа</div>
+  </div>
+
+  <div class="verdict green" id="verdictBox" style="display:none">
+    <span id="verdictText"></span>
+  </div>
+
+  <div class="rec-price-card" id="recPriceCard" style="display:none">
+    <div>
+      <div class="rp-label">Рекомендованная минимальная цена</div>
+      <div style="font-size:11px;color:var(--hint);margin-top:2px">при марже 40%</div>
+    </div>
+    <div class="rp-value" id="rRecPrice">— ₽</div>
+  </div>
+</div>
+
+<div style="height:8px"></div>
+
+<div class="bottom-btn">
+  <button class="btn" onclick="sendResult()">Отправить результат в чат</button>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); tg.MainButton?.hide(); }
+
+  let consumableCount = 0;
+  const fmt = n => (n == null || isNaN(n)) ? '—' :
+    new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽';
+
+  function addConsumable(name = '', price = '') {
+    consumableCount++;
+    const id = consumableCount;
+    const row = document.createElement('div');
+    row.className = 'consumable-row';
+    row.id = `crow_${id}`;
+    row.innerHTML = `
+      <input type="text" class="c-name" placeholder="Гель-лак, пилка…" value="${name}" oninput="recalc()">
+      <input type="number" class="c-price" placeholder="0" value="${price}" min="0" oninput="recalc()">
+      <button class="del-btn" onclick="removeConsumable(${id})">×</button>`;
+    document.getElementById('consumablesList').appendChild(row);
+    if (!name) row.querySelector('.c-name').focus();
+    recalc();
+  }
+
+  function removeConsumable(id) {
+    document.getElementById(`crow_${id}`)?.remove();
+    recalc();
+  }
+
+  function getConsumables() {
+    let total = 0, items = [];
+    document.querySelectorAll('.consumable-row').forEach(row => {
+      const name  = row.querySelector('.c-name').value.trim();
+      const price = parseFloat(row.querySelector('.c-price').value) || 0;
+      total += price;
+      if (name || price) items.push({ name: name || 'Расходник', price });
+    });
+    return { total, items };
+  }
+
+  function recalc() {
+    const { total: materials } = getConsumables();
+    const salaryPct    = parseFloat(document.getElementById('salaryPct').value) || 0;
+    const servicePrice = parseFloat(document.getElementById('servicePrice').value) || 0;
+
+    const labor  = servicePrice * salaryPct / 100;
+    const cost   = materials + labor;
+    const profit = servicePrice - cost;
+    const margin = servicePrice > 0 ? profit / servicePrice * 100 : NaN;
+
+    // Минимальная цена при марже 40%:
+    // price = materials / (1 - salaryPct/100 - 0.4)
+    const denominator = 1 - salaryPct / 100 - 0.4;
+    const recPrice = denominator > 0 ? Math.ceil(materials / denominator / 50) * 50 : null;
+
+    document.getElementById('rMaterials').textContent = fmt(materials);
+    document.getElementById('rLabor').textContent     = labor > 0 ? fmt(labor) : '— ₽';
+    document.getElementById('rCost').textContent      = fmt(cost);
+    document.getElementById('rPrice').textContent     = servicePrice > 0 ? fmt(servicePrice) : '— ₽';
+    document.getElementById('rProfit').textContent    = servicePrice > 0 ? fmt(profit) : '— ₽';
+
+    // Маржа
+    const mc = document.getElementById('marginCard');
+    document.getElementById('marginPct').textContent = isNaN(margin) ? '—%' : margin.toFixed(1) + '%';
+    mc.className = 'margin-card ' + (isNaN(margin) ? 'green' : margin >= 40 ? 'green' : margin >= 20 ? 'orange' : 'red');
+
+    // Вердикт
+    const vb = document.getElementById('verdictBox');
+    const vt = document.getElementById('verdictText');
+    const rpc = document.getElementById('recPriceCard');
+
+    if (!isNaN(margin) && servicePrice > 0) {
+      vb.style.display = '';
+      if (margin >= 40) {
+        vb.className = 'verdict green';
+        vt.textContent = '✅ Цена экономически обоснована. Маржа в норме — услуга прибыльная.';
+        rpc.style.display = 'none';
+      } else if (margin >= 20) {
+        vb.className = 'verdict orange';
+        vt.textContent = `⚠️ Маржа ниже нормы (норма ≥40%). Цену стоит пересмотреть — с текущим прайсом прибыль минимальна.`;
+        rpc.style.display = recPrice ? '' : 'none';
+      } else {
+        vb.className = 'verdict red';
+        vt.textContent = `🔴 Цена убыточна или нерентабельна. При таком прайсе услуга не окупает затраты.`;
+        rpc.style.display = recPrice ? '' : 'none';
+      }
+      if (recPrice) document.getElementById('rRecPrice').textContent = fmt(recPrice);
+    } else {
+      vb.style.display = 'none';
+      rpc.style.display = 'none';
+    }
+  }
+
+  function sendResult() {
+    const name = document.getElementById('serviceName').value.trim() || 'Услуга';
+    const { total: materials, items } = getConsumables();
+    const salaryPct    = parseFloat(document.getElementById('salaryPct').value) || 0;
+    const servicePrice = parseFloat(document.getElementById('servicePrice').value) || 0;
+    const labor  = servicePrice * salaryPct / 100;
+    const cost   = materials + labor;
+    const profit = servicePrice - cost;
+    const margin = servicePrice > 0 ? profit / servicePrice * 100 : 0;
+    const denominator = 1 - salaryPct / 100 - 0.4;
+    const recPrice = denominator > 0 ? Math.ceil(materials / denominator / 50) * 50 : null;
+    const n = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
+
+    const verdict = margin >= 40 ? '✅ Цена обоснована'
+      : margin >= 20 ? '⚠️ Цена ниже нормы'
+      : '🔴 Цена нерентабельна';
+
+    let lines = `💰 Себестоимость: ${name}\n━━━━━━━━━━━━━━━━━━━━\n`;
+    if (items.length) {
+      lines += 'Расходники:\n';
+      items.forEach(i => { lines += `  ${i.name}: ${n(i.price)} ₽\n`; });
+    }
+    lines += `Итого расходники: ${n(materials)} ₽\n`;
+    lines += `Вознаграждение мастера: ${n(labor)} ₽ (${salaryPct}% от цены)\n`;
+    lines += `Себестоимость: ${n(cost)} ₽\n`;
+    lines += `Цена услуги: ${n(servicePrice)} ₽\n`;
+    lines += `Прибыль с услуги: ${n(profit)} ₽\n`;
+    lines += `Маржа: ${margin.toFixed(1)}%\n`;
+    lines += `━━━━━━━━━━━━━━━━━━━━\n${verdict}`;
+    if (recPrice && margin < 40) lines += `\nРек. мин. цена: ${n(recPrice)} ₽`;
+
+    const btn = document.querySelector('.btn');
+    // Результат копируется в буфер обмена. Прямой вызов Telegram убран:
+    // он требовал держать токен бота прямо в коде страницы, открытой всему интернету.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(lines).then(function () {
+        btn.textContent = '📋 Скопировано — вставьте в чат';
+        btn.disabled = false;
+        setTimeout(function () { btn.textContent = 'Отправить результат в чат'; }, 2500);
+      }).catch(function () { alert(lines); });
+    } else {
+      alert(lines);
+    }
+  }
+
+  addConsumable('', '');
+</script>
+</body>
+</html>

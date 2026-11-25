@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BeautyOS — Калькулятор зарплаты мастера</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--tg-theme-bg-color, #1a1a2e);
+    color: var(--tg-theme-text-color, #ffffff);
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 20px; font-weight: 700; color: #e8b4d0; margin-bottom: 4px; }
+  .header p { font-size: 13px; opacity: 0.6; }
+
+  .card {
+    background: var(--tg-theme-secondary-bg-color, #16213e);
+    border-radius: 16px; padding: 16px; margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; opacity: 0.5; margin-bottom: 12px;
+  }
+
+  .seg-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg-btn {
+    flex: 1; min-width: 0; padding: 9px 6px;
+    border: 1.5px solid rgba(232,180,208,0.3);
+    border-radius: 10px; background: transparent;
+    color: var(--tg-theme-text-color, #fff);
+    font-size: 12px; text-align: center; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .seg-btn.active {
+    background: #e8b4d0; border-color: #e8b4d0;
+    color: #1a1a2e; font-weight: 700;
+  }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; margin-bottom: 5px; opacity: 0.8; }
+  input[type=number] {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 10px 14px;
+    color: var(--tg-theme-text-color, #fff); font-size: 15px;
+  }
+  input[type=number]:focus { outline: none; border-color: #e8b4d0; }
+
+  .hint { font-size: 11px; opacity: 0.4; margin-top: 4px; }
+
+  /* Схема отображения дополнительных полей */
+  .extra { display: none; }
+  .extra.show { display: block; }
+
+  .calc-btn {
+    width: 100%; padding: 15px;
+    background: linear-gradient(135deg, #e8b4d0, #c490b0);
+    border: none; border-radius: 14px;
+    color: #1a1a2e; font-size: 16px; font-weight: 700;
+    cursor: pointer; margin-bottom: 20px;
+  }
+  .calc-btn:active { opacity: 0.85; }
+
+  /* Результат */
+  .result-card {
+    background: var(--tg-theme-secondary-bg-color, #16213e);
+    border-radius: 16px; padding: 20px; margin-bottom: 16px; display: none;
+  }
+  .result-card.show { display: block; }
+  .result-title {
+    font-size: 15px; font-weight: 700; color: #e8b4d0;
+    margin-bottom: 16px; text-align: center;
+  }
+
+  .result-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-label { font-size: 13px; opacity: 0.75; flex: 1; }
+  .result-value { font-size: 13px; font-weight: 600; text-align: right; margin-left: 8px; }
+  .result-value.pink { color: #e8b4d0; }
+  .result-value.green { color: #4cde9a; }
+  .result-value.yellow { color: #ffd166; }
+  .result-value.red { color: #ff6b6b; }
+
+  .big-result {
+    background: rgba(232,180,208,0.08); border-radius: 12px;
+    padding: 16px; margin-bottom: 14px; text-align: center;
+  }
+  .big-label { font-size: 12px; opacity: 0.55; margin-bottom: 6px; }
+  .big-value { font-size: 28px; font-weight: 700; color: #e8b4d0; }
+  .big-sub { font-size: 11px; opacity: 0.45; margin-top: 4px; }
+
+  .cost-block {
+    background: rgba(255,107,107,0.08); border-radius: 12px;
+    padding: 14px; margin-top: 12px; text-align: center;
+  }
+  .cost-label { font-size: 12px; opacity: 0.6; margin-bottom: 6px; }
+  .cost-value { font-size: 22px; font-weight: 700; color: #ff6b6b; }
+
+  .divider { height: 1px; background: rgba(255,255,255,0.07); margin: 12px 0; }
+
+  .tip-block {
+    background: rgba(76,222,154,0.07); border-radius: 10px;
+    padding: 12px; margin-top: 12px;
+    font-size: 12px; line-height: 1.5; opacity: 0.85;
+  }
+  .tip-block strong { color: #4cde9a; }
+
+  .tax-detail {
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px; padding: 14px; margin-top: 12px;
+    display: none;
+  }
+  .tax-detail.show { display: block; }
+  .tax-title {
+    font-size: 12px; font-weight: 700; opacity: 0.6;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    margin-bottom: 10px;
+  }
+  .tax-row {
+    display: flex; justify-content: space-between;
+    padding: 6px 0; font-size: 12px; opacity: 0.8;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .tax-row:last-of-type { border-bottom: none; }
+  .tax-row span:last-child { font-weight: 600; color: #ff6b6b; }
+  .tax-sub { opacity: 0.6; font-style: italic; }
+  .tax-sub span:last-child { color: #ffd166 !important; }
+  .tax-total {
+    margin-top: 6px; font-weight: 700 !important;
+    font-size: 13px !important; opacity: 1 !important;
+  }
+  .tax-total span:last-child { color: #ff6b6b !important; font-size: 14px; }
+  .tax-note {
+    font-size: 11px; opacity: 0.5; margin-top: 8px;
+    line-height: 1.4; font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💇 Калькулятор зарплаты мастера</h1>
+  <p>BeautyOS · Антон Дерконос</p>
+</div>
+
+<!-- Схема начисления -->
+<div class="card">
+  <div class="card-title">Схема начисления</div>
+  <div class="seg-group" id="schemeGroup">
+    <button class="seg-btn active" data-val="percent">% от выручки</button>
+    <button class="seg-btn" data-val="salary_percent">Оклад + %</button>
+    <button class="seg-btn" data-val="rent">Аренда кресла</button>
+  </div>
+</div>
+
+
+
+<!-- Основные данные -->
+<div class="card">
+  <div class="card-title">Данные за месяц</div>
+
+  <div class="field">
+    <label>Выручка мастера за месяц (руб)</label>
+    <input type="number" id="revenue" value="120000" min="0" placeholder="120000">
+    <div class="hint">Сумма всех услуг которые сделал мастер</div>
+  </div>
+
+  <div class="field">
+    <label>Количество клиентов за месяц</label>
+    <input type="number" id="clients" value="80" min="0" placeholder="80">
+  </div>
+
+  <div class="field">
+    <label>Процент мастера от выручки (%)</label>
+    <input type="number" id="percent" value="40" min="0" max="100" placeholder="40">
+    <div class="hint">Стандарт для маникюра 35-45%, парикмахер 40-50%</div>
+  </div>
+
+  <!-- Оклад (для схемы оклад+%) -->
+  <div class="field extra" id="salaryField">
+    <label>Оклад (руб)</label>
+    <input type="number" id="salary" value="20000" min="0" placeholder="20000">
+    <div class="hint">Фиксированная часть независимо от выручки</div>
+  </div>
+
+  <!-- Аренда кресла -->
+  <div class="field extra" id="rentField">
+    <label>Аренда кресла/места в месяц (руб)</label>
+    <input type="number" id="rentAmount" value="25000" min="0" placeholder="25000">
+    <div class="hint">Фиксированная сумма которую платит мастер за аренду</div>
+  </div>
+</div>
+
+<!-- Допрасходы -->
+<div class="card">
+  <div class="card-title">Дополнительно</div>
+  <div class="field">
+    <label>Бонус / премия (руб)</label>
+    <input type="number" id="bonus" value="0" min="0" placeholder="0">
+    <div class="hint">За выполнение плана, лучший средний чек и т.д.</div>
+  </div>
+  <div class="field">
+    <label>Удержание / штраф (руб)</label>
+    <input type="number" id="penalty" value="0" min="0" placeholder="0">
+    <div class="hint">Опоздания, нарушения стандартов и т.д.</div>
+  </div>
+</div>
+
+<button class="calc-btn" onclick="calculate()">Рассчитать →</button>
+
+<!-- Результат -->
+<div class="result-card" id="resultCard">
+  <div class="result-title">📊 Расчёт зарплаты мастера</div>
+
+  <div class="big-result">
+    <div class="big-label">Зарплата на руки (до налогов)</div>
+    <div class="big-value" id="resNet">—</div>
+    <div class="big-sub">За месяц</div>
+  </div>
+
+  <div class="result-row">
+    <span class="result-label">💰 Выручка мастера</span>
+    <span class="result-value pink" id="resRevenue">—</span>
+  </div>
+  <div class="result-row">
+    <span class="result-label">📊 Средний чек</span>
+    <span class="result-value" id="resAvgCheck">—</span>
+  </div>
+  <div class="result-row" id="baseSalaryRow">
+    <span class="result-label">📋 Базовая часть</span>
+    <span class="result-value yellow" id="resBase">—</span>
+  </div>
+  <div class="result-row">
+    <span class="result-label">🎯 % от выручки</span>
+    <span class="result-value yellow" id="resPercent">—</span>
+  </div>
+  <div class="result-row" id="bonusRow">
+    <span class="result-label">🏆 Бонус</span>
+    <span class="result-value green" id="resBonus">—</span>
+  </div>
+  <div class="result-row" id="penaltyRow">
+    <span class="result-label">⚠️ Удержание</span>
+    <span class="result-value red" id="resPenalty">—</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="cost-block">
+    <div class="cost-label">💼 Стоимость мастера для салона (с налогами)</div>
+    <div class="cost-value" id="resCost">—</div>
+  </div>
+
+  <!-- Расшифровка налогов -->
+  <div class="tax-detail" id="taxDetail">
+    <div class="tax-title">📋 Из чего складывается налоговая нагрузка</div>
+    <div class="tax-row">
+      <span>Зарплата на руки</span>
+      <span id="taxNet">—</span>
+    </div>
+    <div class="tax-row">
+      <span>НДФЛ 13% (платит мастер)</span>
+      <span id="taxNdfl">—</span>
+    </div>
+    <div class="tax-row tax-sub">
+      <span>Итого начислено (gross)</span>
+      <span id="taxGross">—</span>
+    </div>
+    <div class="tax-row">
+      <span>Пенсионный фонд 22%</span>
+      <span id="taxPfr">—</span>
+    </div>
+    <div class="tax-row">
+      <span>Медстрахование 5.1%</span>
+      <span id="taxOms">—</span>
+    </div>
+    <div class="tax-row">
+      <span>Соцстрахование 2.9%</span>
+      <span id="taxFss">—</span>
+    </div>
+    <div class="tax-row tax-total">
+      <span>Итого стоимость для салона</span>
+      <span id="taxTotal">—</span>
+    </div>
+    <div class="tax-note" id="taxNote"></div>
+  </div>
+
+  <div class="result-row" style="margin-top:12px">
+    <span class="result-label">📈 ФОТ % от выручки мастера</span>
+    <span class="result-value" id="resFotPct">—</span>
+  </div>
+  <div class="result-row">
+    <span class="result-label">💵 Доход салона с мастера</span>
+    <span class="result-value green" id="resSalonIncome">—</span>
+  </div>
+
+  <div class="tip-block" id="tipBlock"></div>
+  <button id="shareBtn" onclick="shareResult()" style="display:none;width:100%;margin-top:16px;padding:14px;background:#e8b4d0;color:#1a1a2e;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;">🚀 Поделиться результатом</button>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+let scheme = "percent";
+
+
+function setupGroup(id, cb) {
+  document.getElementById(id).querySelectorAll(".seg-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById(id).querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      cb(btn.dataset.val);
+    });
+  });
+}
+
+setupGroup("schemeGroup", val => {
+  scheme = val;
+  document.getElementById("salaryField").classList.toggle("show", val === "salary_percent");
+  document.getElementById("rentField").classList.toggle("show", val === "rent");
+  document.getElementById("percent").closest(".field").style.display =
+    val === "rent" ? "none" : "block";
+});
+
+
+
+function fmt(n) { return Math.round(n).toLocaleString("ru-RU") + " ₽"; }
+function fmtPct(n) { return (n * 100).toFixed(1) + "%"; }
+
+function calculate() {
+  const revenue = parseFloat(document.getElementById("revenue").value) || 0;
+  const clients = parseFloat(document.getElementById("clients").value) || 1;
+  const pct = parseFloat(document.getElementById("percent").value) / 100 || 0.40;
+  const salary = parseFloat(document.getElementById("salary").value) || 0;
+  const rentAmt = parseFloat(document.getElementById("rentAmount").value) || 0;
+  const bonus = parseFloat(document.getElementById("bonus").value) || 0;
+  const penalty = parseFloat(document.getElementById("penalty").value) || 0;
+
+  const avgCheck = revenue / clients;
+  let base = 0;
+  let percentPart = 0;
+  let netSalary = 0;
+
+  if (scheme === "percent") {
+    base = 0;
+    percentPart = revenue * pct;
+    netSalary = percentPart + bonus - penalty;
+  } else if (scheme === "salary_percent") {
+    base = salary;
+    percentPart = revenue * pct;
+    netSalary = base + percentPart + bonus - penalty;
+  } else { // rent
+    base = 0;
+    percentPart = 0;
+    netSalary = revenue - rentAmt + bonus - penalty;
+  }
+
+  const taxCost = netSalary * 1.302; // НДФЛ + страховые ~30%
+  const fotPct = taxCost / revenue;
+  const salonIncome = revenue - taxCost;
+
+  // Display
+  document.getElementById("resRevenue").textContent = fmt(revenue);
+  document.getElementById("resAvgCheck").textContent = fmt(avgCheck);
+  document.getElementById("resBase").textContent = base > 0 ? fmt(base) : (scheme === "rent" ? fmt(rentAmt) + " (аренда)" : "—");
+  document.getElementById("resPercent").textContent = scheme === "rent" ? "—" : fmt(percentPart) + ` (${(pct*100).toFixed(0)}%)`;
+  document.getElementById("resBonus").textContent = bonus > 0 ? fmt(bonus) : "—";
+  document.getElementById("resPenalty").textContent = penalty > 0 ? fmt(penalty) : "—";
+  document.getElementById("resNet").textContent = fmt(netSalary);
+  document.getElementById("resCost").textContent = fmt(taxCost);
+
+  // Tax breakdown
+  if (scheme !== "rent") {
+    const gross = netSalary / 0.87; // net → gross (до НДФЛ)
+    const ndfl = gross * 0.13;
+    const pfr = gross * 0.22;
+    const oms = gross * 0.051;
+    const fss = gross * 0.029;
+    const totalEmployer = gross + pfr + oms + fss;
+
+    document.getElementById("taxNet").textContent = fmt(netSalary);
+    document.getElementById("taxNdfl").textContent = fmt(ndfl);
+    document.getElementById("taxGross").textContent = fmt(gross);
+    document.getElementById("taxPfr").textContent = fmt(pfr);
+    document.getElementById("taxOms").textContent = fmt(oms);
+    document.getElementById("taxFss").textContent = fmt(fss);
+    document.getElementById("taxTotal").textContent = fmt(totalEmployer);
+    document.getElementById("taxNote").textContent =
+      "* При УСН 6% работодатель может уменьшить налог на сумму страховых взносов до 50%";
+    document.getElementById("taxDetail").classList.add("show");
+  } else {
+    document.getElementById("taxDetail").classList.remove("show");
+    document.getElementById("taxNote").textContent =
+      "Аренда кресла: мастер — самозанятый или ИП, налоги платит самостоятельно (НПД 4-6%)";
+    document.getElementById("taxDetail").classList.add("show");
+  }
+  document.getElementById("resFotPct").textContent = fmtPct(fotPct);
+  document.getElementById("resSalonIncome").textContent = fmt(salonIncome);
+
+  // Tip
+  let tip = "";
+  if (fotPct > 0.50) {
+    tip = `⚠️ <strong>ФОТ превышает 50% от выручки мастера</strong> — это опасная зона. Норма: 40-47%. Проверь % мастера или подними его выручку.`;
+  } else if (fotPct > 0.45) {
+    tip = `🟡 <strong>ФОТ на верхней границе нормы</strong> (45-50%). Следи за динамикой. Цель — снизить до 40-45% через рост среднего чека.`;
+  } else {
+    tip = `✅ <strong>ФОТ в норме</strong> (${fmtPct(fotPct)}). Здоровая финансовая модель. Средний чек мастера: ${fmt(avgCheck)}.`;
+  }
+
+  if (avgCheck < 1500) {
+    tip += ` Средний чек низкий — работай над допродажами и апсейлом.`;
+  }
+
+  document.getElementById("tipBlock").innerHTML = tip;
+
+  document.getElementById("resultCard").classList.add("show");
+  document.getElementById("resultCard").scrollIntoView({ behavior: "smooth" });
+
+  // Сохраняем текст и показываем кнопку
+  lastResultText =
+    `💇 Зарплата мастера\n━━━━━━━━━━━━━━━━━━━━\n` +
+    `Выручка: ${fmt(revenue)}\n` +
+    `Средний чек: ${fmt(avgCheck)}\n` +
+    `Зарплата на руки: ${fmt(netSalary)}\n` +
+    `Стоимость для салона: ${fmt(taxCost)}\n` +
+    `ФОТ % от выручки: ${fmtPct(fotPct)}\n` +
+    `Доход салона с мастера: ${fmt(salonIncome)}`;
+  document.getElementById("shareBtn").style.display = "block";
+}
+
+let lastResultText = "";
+
+function shareResult() {
+  const btn = document.getElementById("shareBtn");
+  const text = lastResultText;
+  if (!text) { alert("Сначала нажми Рассчитать"); return; }
+  // Результат копируется в буфер обмена. Прямой вызов Telegram убран:
+  // он требовал держать токен бота прямо в коде страницы, открытой всему интернету.
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      btn.textContent = '📋 Скопировано — вставьте в чат';
+      btn.disabled = false;
+      setTimeout(function () { btn.textContent = '📤 Поделиться результатом'; }, 2500);
+    }).catch(function () { alert(text); });
+  } else {
+    alert(text);
+  }
+}
+</script>
+</body>
+</html>

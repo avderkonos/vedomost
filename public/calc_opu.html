@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ОПУ месяца — BeautyOS</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:     var(--tg-theme-bg-color, #ffffff);
+    --bg2:    var(--tg-theme-secondary-bg-color, #f5f5f5);
+    --text:   var(--tg-theme-text-color, #222222);
+    --hint:   var(--tg-theme-hint-color, #888888);
+    --link:   var(--tg-theme-link-color, #5B7FE9);
+    --accent: #1A6E5C;
+    --green:  #27AE60;
+    --orange: #E67E22;
+    --red:    #E74C3C;
+    --radius: 14px;
+  }
+  body {
+    background: var(--bg2);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    padding-bottom: 100px;
+  }
+
+  .header {
+    background: var(--accent);
+    color: #fff;
+    padding: 18px 16px 14px;
+    text-align: center;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header p  { font-size: 12px; opacity: 0.85; margin-top: 3px; }
+
+  .section {
+    background: var(--bg);
+    margin: 12px 12px 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .section-title {
+    padding: 12px 16px 8px;
+    font-size: 12px; font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--bg2);
+  }
+  .field {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--bg2);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .field:last-child { border-bottom: none; }
+  .field label { flex: 1; font-size: 14px; color: var(--text); }
+  .field label small { display: block; font-size: 11px; color: var(--hint); margin-top: 1px; }
+  .field input[type=number], .field input[type=text] {
+    width: 120px;
+    background: var(--bg2);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 14px; color: var(--text);
+    text-align: right; outline: none;
+    transition: border-color .2s; flex-shrink: 0;
+  }
+  .field input.wide { width: 100%; text-align: left; }
+  .field input:focus { border-color: var(--accent); }
+
+  /* Налоговый режим — radio-кнопки */
+  .tax-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  .tax-opt {
+    border: 2px solid var(--bg2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    text-align: center;
+  }
+  .tax-opt input { display: none; }
+  .tax-opt .t-name { font-size: 13px; font-weight: 700; }
+  .tax-opt .t-desc { font-size: 10px; color: var(--hint); margin-top: 2px; line-height: 1.3; }
+  .tax-opt.selected {
+    border-color: var(--accent);
+    background: #e8f5f2;
+  }
+  .tax-patent-field {
+    padding: 0 16px 12px;
+    display: none;
+  }
+  .tax-patent-field.visible { display: flex; align-items: center; gap: 10px; }
+  .tax-patent-field label { flex: 1; font-size: 13px; color: var(--hint); }
+  .tax-patent-field input {
+    width: 130px;
+    background: var(--bg2);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 14px; color: var(--text);
+    text-align: right; outline: none;
+  }
+  .tax-patent-field input:focus { border-color: var(--accent); }
+
+  /* Результат */
+  .result-box {
+    background: var(--bg);
+    margin: 12px 12px 0;
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .result-title { font-size: 12px; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .result-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; font-size: 13px;
+  }
+  .result-row .label { color: var(--hint); }
+  .result-row .value { font-weight: 600; }
+  .result-row .value.neg { color: var(--red); }
+  .result-row .value.tax { color: var(--orange); }
+  .result-divider { border: none; border-top: 1px solid var(--bg2); margin: 8px 0; }
+
+  .profit-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .profit-card {
+    border-radius: 12px; padding: 12px 14px; text-align: center;
+  }
+  .profit-card .pc-label { font-size: 10px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.3px; }
+  .profit-card .pc-value { font-size: 19px; font-weight: 800; margin-top: 4px; }
+  .profit-card.green  { background: #e8f8f0; color: var(--green); }
+  .profit-card.orange { background: #fef3e2; color: var(--orange); }
+  .profit-card.red    { background: #fdecea; color: var(--red); }
+
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .kpi-card { border-radius: 10px; padding: 10px 8px; text-align: center; background: var(--bg2); }
+  .kpi-card .kpi-icon { font-size: 18px; }
+  .kpi-card .kpi-val  { font-size: 15px; font-weight: 700; margin: 3px 0 1px; }
+  .kpi-card .kpi-label{ font-size: 9px; color: var(--hint); line-height: 1.3; text-transform: uppercase; }
+  .kpi-card.green  { background: #e8f8f0; } .kpi-card.green  .kpi-val { color: var(--green); }
+  .kpi-card.orange { background: #fef3e2; } .kpi-card.orange .kpi-val { color: var(--orange); }
+  .kpi-card.red    { background: #fdecea; } .kpi-card.red    .kpi-val { color: var(--red); }
+
+  .bottom-btn {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--bg); border-top: 1px solid var(--bg2);
+  }
+  .btn {
+    width: 100%; padding: 14px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity .2s;
+  }
+  .btn:active { opacity: .85; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 ОПУ месяца</h1>
+  <p>BeautyOS · Отчёт о прибылях и убытках</p>
+</div>
+
+<!-- Период -->
+<div class="section">
+  <div class="section-title">Период</div>
+  <div class="field">
+    <input type="text" id="month" class="wide" placeholder="Июнь 2026">
+  </div>
+</div>
+
+<!-- Доходы -->
+<div class="section">
+  <div class="section-title">Доходы</div>
+  <div class="field">
+    <label>Выручка<small>все поступления за месяц (до скидок)</small></label>
+    <input type="number" id="revenue" placeholder="0" min="0" oninput="recalc()">
+  </div>
+  <div class="field">
+    <label>Скидки и бонусы<small>сумма предоставленных скидок</small></label>
+    <input type="number" id="discounts" placeholder="0" min="0" oninput="recalc()">
+  </div>
+</div>
+
+<!-- Расходы -->
+<div class="section">
+  <div class="section-title">Расходы</div>
+  <div class="field">
+    <label>Расходники<small>материалы, косметика</small></label>
+    <input type="number" id="materials" placeholder="0" min="0" oninput="recalc()">
+  </div>
+  <div class="field">
+    <label>ФОТ мастеров<small>зарплата + отчисления с ФОТ</small></label>
+    <input type="number" id="masters" placeholder="0" min="0" oninput="recalc()">
+  </div>
+  <div class="field">
+    <label>ФОТ администрации<small>управляющий, ресепшн + отчисления</small></label>
+    <input type="number" id="admin" placeholder="0" min="0" oninput="recalc()">
+  </div>
+  <div class="field">
+    <label>Найм и обучение<small>подбор, тренинги, курсы персонала</small></label>
+    <input type="number" id="hrdev" placeholder="0" min="0" oninput="recalc()">
+  </div>
+  <div class="field">
+    <label>Аренда<small>помещение</small></label>
+    <input type="number" id="rent" placeholder="0" min="0" oninput="recalc()">
+  </div>
+  <div class="field">
+    <label>Маркетинг<small>реклама, продвижение</small></label>
+    <input type="number" id="marketing" placeholder="0" min="0" oninput="recalc()">
+  </div>
+  <div class="field">
+    <label>Прочие расходы<small>коммуналка, эквайринг, ПО</small></label>
+    <input type="number" id="other" placeholder="0" min="0" oninput="recalc()">
+  </div>
+</div>
+
+<!-- Налоговый режим -->
+<div class="section">
+  <div class="section-title">Налоговый режим</div>
+  <div class="tax-grid">
+    <label class="tax-opt selected" id="lbl_none" onclick="selectTax('none')">
+      <div class="t-name">Не учитывать</div>
+      <div class="t-desc">Показать прибыль до налогов</div>
+    </label>
+    <label class="tax-opt" id="lbl_usn6" onclick="selectTax('usn6')">
+      <div class="t-name">УСН 6%</div>
+      <div class="t-desc">6% от выручки</div>
+    </label>
+    <label class="tax-opt" id="lbl_usn15" onclick="selectTax('usn15')">
+      <div class="t-name">УСН 15%</div>
+      <div class="t-desc">15% от прибыли (мин. 1% выручки)</div>
+    </label>
+    <label class="tax-opt" id="lbl_patent" onclick="selectTax('patent')">
+      <div class="t-name">Патент</div>
+      <div class="t-desc">Фиксированный платёж в год</div>
+    </label>
+  </div>
+  <div class="tax-patent-field" id="patentField">
+    <label>Стоимость патента в год, ₽</label>
+    <input type="number" id="patentYear" placeholder="60000" min="0" oninput="recalc()">
+  </div>
+</div>
+
+<!-- Результат -->
+<div class="result-box">
+  <div class="result-title">📈 Результат</div>
+
+  <div class="result-row">
+    <span class="label">Выручка (до скидок)</span>
+    <span class="value" id="rRevenue">— ₽</span>
+  </div>
+  <div class="result-row">
+    <span class="label">Скидки и бонусы</span>
+    <span class="value neg" id="rDiscounts">— ₽</span>
+  </div>
+  <div class="result-row" style="font-weight:600">
+    <span class="label" style="color:var(--text)">Чистая выручка</span>
+    <span class="value" id="rNetRevenue">— ₽</span>
+  </div>
+  <hr class="result-divider">
+  <div class="result-row">
+    <span class="label">Итого расходы</span>
+    <span class="value neg" id="rExpenses">— ₽</span>
+  </div>
+  <div class="result-row">
+    <span class="label">Прибыль до налогов</span>
+    <span class="value" id="rProfit">— ₽</span>
+  </div>
+  <div class="result-row" id="taxRow" style="display:none">
+    <span class="label" id="taxLabel">Налог</span>
+    <span class="value tax" id="rTax">— ₽</span>
+  </div>
+  <hr class="result-divider">
+
+  <div class="profit-cards">
+    <div class="profit-card green" id="cardBefore">
+      <div class="pc-label">До налогов</div>
+      <div class="pc-value" id="rProfitBefore">0 ₽</div>
+    </div>
+    <div class="profit-card green" id="cardAfter">
+      <div class="pc-label">После налогов</div>
+      <div class="pc-value" id="rProfitAfter">0 ₽</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card" id="kpiFot">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-val" id="kpiFotVal">—%</div>
+      <div class="kpi-label">ФОТ<br>норма ≤47%</div>
+    </div>
+    <div class="kpi-card" id="kpiRent">
+      <div class="kpi-icon">🏠</div>
+      <div class="kpi-val" id="kpiRentVal">—%</div>
+      <div class="kpi-label">Аренда<br>норма ≤20%</div>
+    </div>
+    <div class="kpi-card" id="kpiMargin">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-val" id="kpiMarginVal">—%</div>
+      <div class="kpi-label">Рентаб.<br>норма ≥15%</div>
+    </div>
+  </div>
+</div>
+
+<div style="height:8px"></div>
+
+<div class="bottom-btn">
+  <button class="btn" onclick="sendResult()">Отправить отчёт в чат</button>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); tg.MainButton?.hide(); }
+
+  let taxMode = 'none';
+
+  function selectTax(mode) {
+    taxMode = mode;
+    ['none','usn6','usn15','patent'].forEach(m => {
+      document.getElementById('lbl_' + m)?.classList.toggle('selected', m === mode);
+    });
+    document.getElementById('patentField').classList.toggle('visible', mode === 'patent');
+    recalc();
+  }
+
+  const fmt  = n => n == null ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽';
+  const pct  = n => !isFinite(n) ? '—' : n.toFixed(1) + '%';
+
+  function calcTax(netRevenue, profit) {
+    switch (taxMode) {
+      case 'usn6':   return Math.max(netRevenue * 0.06, 0);
+      case 'usn15':  return Math.max(profit * 0.15, netRevenue * 0.01, 0);
+      case 'patent': {
+        const yr = parseFloat(document.getElementById('patentYear').value) || 0;
+        return yr / 12;
+      }
+      default: return 0;
+    }
+  }
+
+  function taxLabel() {
+    switch (taxMode) {
+      case 'usn6':   return 'Налог УСН 6% (от выручки)';
+      case 'usn15':  return 'Налог УСН 15% (от прибыли)';
+      case 'patent': return 'Патент (1/12 от годового)';
+      default:       return 'Налог';
+    }
+  }
+
+  function colorClass(profit, netRevenue) {
+    if (!netRevenue) return 'orange';
+    const m = profit / netRevenue * 100;
+    return profit <= 0 ? 'red' : m >= 15 ? 'green' : 'orange';
+  }
+
+  function setKpi(id, valId, value, okThresh, warnThresh, lowerIsBetter) {
+    const el = document.getElementById(id);
+    document.getElementById(valId).textContent = pct(value);
+    el.className = 'kpi-card';
+    if (!isFinite(value)) return;
+    let cls;
+    if (lowerIsBetter) cls = value <= okThresh ? 'green' : value <= warnThresh ? 'orange' : 'red';
+    else               cls = value >= okThresh ? 'green' : value >= warnThresh ? 'orange' : 'red';
+    el.classList.add(cls);
+  }
+
+  function recalc() {
+    const revenue   = parseFloat(document.getElementById('revenue').value)   || 0;
+    const discounts = parseFloat(document.getElementById('discounts').value) || 0;
+    const materials = parseFloat(document.getElementById('materials').value) || 0;
+    const masters   = parseFloat(document.getElementById('masters').value)   || 0;
+    const admin     = parseFloat(document.getElementById('admin').value)     || 0;
+    const hrdev     = parseFloat(document.getElementById('hrdev').value)     || 0;
+    const rent      = parseFloat(document.getElementById('rent').value)      || 0;
+    const marketing = parseFloat(document.getElementById('marketing').value) || 0;
+    const other     = parseFloat(document.getElementById('other').value)     || 0;
+
+    const netRevenue    = revenue - discounts;
+    const totalFot      = masters + admin;
+    const totalExpenses = materials + totalFot + hrdev + rent + marketing + other;
+    const profitBefore  = netRevenue - totalExpenses;
+    const tax           = calcTax(netRevenue, profitBefore);
+    const profitAfter   = profitBefore - tax;
+
+    const fotPct    = netRevenue ? totalFot / netRevenue * 100 : 0;
+    const rentPct   = netRevenue ? rent / netRevenue * 100 : 0;
+    const marginPct = netRevenue ? profitAfter / netRevenue * 100 : 0;
+
+    document.getElementById('rRevenue').textContent    = fmt(revenue);
+    document.getElementById('rDiscounts').textContent  = discounts ? fmt(discounts) : '—';
+    document.getElementById('rNetRevenue').textContent = fmt(netRevenue);
+    document.getElementById('rExpenses').textContent   = fmt(totalExpenses);
+    document.getElementById('rProfit').textContent     = fmt(profitBefore);
+    document.getElementById('rProfitBefore').textContent = fmt(profitBefore);
+    document.getElementById('rProfitAfter').textContent  = fmt(profitAfter);
+
+    const showTax = taxMode !== 'none' && tax > 0;
+    document.getElementById('taxRow').style.display = showTax ? '' : 'none';
+    document.getElementById('taxLabel').textContent = taxLabel();
+    document.getElementById('rTax').textContent = fmt(tax);
+
+    document.getElementById('cardBefore').className = 'profit-card ' + colorClass(profitBefore, netRevenue);
+    document.getElementById('cardAfter').className  = 'profit-card ' + colorClass(profitAfter, netRevenue);
+
+    setKpi('kpiFot',    'kpiFotVal',    fotPct,    42, 50, true);
+    setKpi('kpiRent',   'kpiRentVal',   rentPct,   15, 20, true);
+    setKpi('kpiMargin', 'kpiMarginVal', marginPct, 15,  5, false);
+  }
+
+  function sendResult() {
+    const month     = document.getElementById('month').value.trim() || 'Месяц';
+    const revenue   = parseFloat(document.getElementById('revenue').value)   || 0;
+    const discounts = parseFloat(document.getElementById('discounts').value) || 0;
+    const materials = parseFloat(document.getElementById('materials').value) || 0;
+    const masters   = parseFloat(document.getElementById('masters').value)   || 0;
+    const admin     = parseFloat(document.getElementById('admin').value)     || 0;
+    const hrdev     = parseFloat(document.getElementById('hrdev').value)     || 0;
+    const rent      = parseFloat(document.getElementById('rent').value)      || 0;
+    const marketing = parseFloat(document.getElementById('marketing').value) || 0;
+    const other     = parseFloat(document.getElementById('other').value)     || 0;
+
+    const netRevenue    = revenue - discounts;
+    const totalFot      = masters + admin;
+    const totalExpenses = materials + totalFot + hrdev + rent + marketing + other;
+    const profitBefore  = netRevenue - totalExpenses;
+    const tax           = calcTax(netRevenue, profitBefore);
+    const profitAfter   = profitBefore - tax;
+    const n = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
+    const p = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '—';
+    const fotPct  = netRevenue ? totalFot / netRevenue * 100 : 0;
+    const rentPct = netRevenue ? rent / netRevenue * 100 : 0;
+    const marginPct = netRevenue ? profitAfter / netRevenue * 100 : 0;
+    const s = (v, ok, warn, lower) => lower
+      ? (v <= ok ? '✅' : v <= warn ? '⚠️' : '🔴')
+      : (v >= ok ? '✅' : v >= warn ? '⚠️' : '🔴');
+
+    const taxNames = { none: 'не учитывается', usn6: 'УСН 6%', usn15: 'УСН 15%', patent: 'Патент' };
+
+    let text =
+      `📊 ОПУ — ${month}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `ДОХОДЫ\n` +
+      `  Выручка (до скидок): ${n(revenue)} ₽\n` +
+      (discounts ? `  Скидки и бонусы: −${n(discounts)} ₽\n` : '') +
+      `  Чистая выручка: ${n(netRevenue)} ₽\n\n` +
+      `РАСХОДЫ\n` +
+      `  Расходники: ${n(materials)} ₽\n` +
+      `  ФОТ мастеров: ${n(masters)} ₽\n` +
+      `  ФОТ администрации: ${n(admin)} ₽\n` +
+      (hrdev ? `  Найм и обучение: ${n(hrdev)} ₽\n` : '') +
+      `  Аренда: ${n(rent)} ₽\n` +
+      `  Маркетинг: ${n(marketing)} ₽\n` +
+      `  Прочие: ${n(other)} ₽\n` +
+      `  Итого расходы: ${n(totalExpenses)} ₽\n\n` +
+      `РЕЗУЛЬТАТ (налог: ${taxNames[taxMode]})\n` +
+      `  Прибыль до налогов: ${n(profitBefore)} ₽\n` +
+      (tax ? `  ${taxLabel()}: ${n(tax)} ₽\n` : '') +
+      `  Прибыль после налогов: ${n(profitAfter)} ₽\n\n` +
+      `ПОКАЗАТЕЛИ\n` +
+      `${s(fotPct, 42, 50, true)} ФОТ: ${p(totalFot, netRevenue)} (норма ≤47%)\n` +
+      `${s(rentPct, 15, 20, true)} Аренда: ${p(rent, netRevenue)} (норма ≤20%)\n` +
+      `${s(marginPct, 15, 5, false)} Рентабельность: ${p(profitAfter, netRevenue)} (норма ≥15%)`;
+
+    const btn = document.querySelector('.btn');
+    // Результат копируется в буфер обмена. Прямой вызов Telegram убран:
+    // он требовал держать токен бота прямо в коде страницы, открытой всему интернету.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '📋 Скопировано — вставьте в чат';
+        btn.disabled = false;
+        setTimeout(function () { btn.textContent = 'Отправить отчёт в чат'; }, 2500);
+      }).catch(function () { alert(text); });
+    } else {
+      alert(text);
+    }
+  }
+</script>
+</body>
+</html>
